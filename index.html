@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Journal Mémoire - Mon Carnet Personnel</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Journal mémoire personnel avec dictée vocale et clavier, 100% privé et gratuit.">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Journal">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Écran de verrouillage par mot de passe (Protection Intimité) -->
+  <div id="pinScreen" class="pin-screen">
+    <div style="font-size: 3rem; margin-bottom: 12px; filter: drop-shadow(0 4px 10px rgba(99, 102, 241, 0.4));">🔒</div>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 6px;">Journal Privé & Intime</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; text-align: center;">
+      Vos pensées sont protégées.<br>Entrez votre mot de passe pour déverrouiller.
+    </p>
+    
+    <!-- Champ de mot de passe -->
+    <div style="width: 100%; max-width: 280px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+      <div style="position: relative; display: flex; align-items: center;">
+        <input type="password" id="appPasswordInput" class="form-input" placeholder="Mot de passe secret..." style="width: 100%; padding-right: 42px; font-size: 1.1rem; text-align: center; letter-spacing: 2px;">
+        <button type="button" id="togglePassEyeBtn" class="icon-btn" style="position: absolute; right: 4px; border: none; width: 34px; height: 34px; font-size: 1rem;">👁️</button>
+      </div>
+      <button type="button" class="btn btn-primary" id="unlockAppBtn" style="padding: 12px;">🔓 Déverrouiller</button>
+      <div id="passwordErrorMsg" style="color: var(--danger); font-size: 0.85rem; text-align: center; min-height: 20px; font-weight: 600;"></div>
+    </div>
+
+    <!-- Pavé numérique rapide (si mot de passe numérique ou PIN) -->
+    <div class="pin-keypad" id="quickPinKeypad">
+      <button class="pin-key" data-num="1">1</button>
+      <button class="pin-key" data-num="2">2</button>
+      <button class="pin-key" data-num="3">3</button>
+      <button class="pin-key" data-num="4">4</button>
+      <button class="pin-key" data-num="5">5</button>
+      <button class="pin-key" data-num="6">6</button>
+      <button class="pin-key" data-num="7">7</button>
+      <button class="pin-key" data-num="8">8</button>
+      <button class="pin-key" data-num="9">9</button>
+      <button class="pin-key" id="pinClearBtn" style="font-size: 0.85rem;">C</button>
+      <button class="pin-key" data-num="0">0</button>
+      <button class="pin-key" id="pinDeleteBtn">⌫</button>
+    </div>
+  </div>
+
+  <!-- Conteneur Principal Mobile -->
+  <div class="app-container">
+    
+    <!-- En-tête -->
+    <header class="app-header">
+      <div class="header-title">
+        <img src="icons/icon-192.png" alt="Logo" class="header-logo">
+        <div>
+          <h1 id="appHeaderTitle">Mon Journal</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="lockAppBtn" title="Verrouiller le journal pour intimité">🔒</button>
+        <button class="icon-btn" id="themeToggleBtn" title="Changer le thème">🌙</button>
+        <button class="icon-btn" id="quickVoiceHeaderBtn" title="Dictée vocale rapide">🎙️</button>
+      </div>
+    </header>
+
+    <!-- Barre de recherche et filtre d'humeur -->
+    <div class="search-filter-bar" id="searchFilterBar">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Rechercher un souvenir, un lieu, un mot...">
+      </div>
+
+      <!-- Filtres rapides par Humeur -->
+      <div class="mood-filter-scroll" id="moodFilterScroll">
+        <button class="mood-pill active" data-mood="all">Tous</button>
+        <button class="mood-pill" data-mood="😊">😊 Heureux</button>
+        <button class="mood-pill" data-mood="😌">😌 Calme</button>
+        <button class="mood-pill" data-mood="⚡">⚡ Énergie</button>
+        <button class="mood-pill" data-mood="💖">💖 Reconnaissant</button>
+        <button class="mood-pill" data-mood="🤔">🤔 Pensif</button>
+        <button class="mood-pill" data-mood="😴">😴 Fatigué</button>
+        <button class="mood-pill" data-mood="😢">😢 Difficile</button>
+        <button class="mood-pill" data-mood="favorite">⭐ Favoris</button>
+      </div>
+    </div>
+
+    <!-- Conteneur des Vues de l'application -->
+    <main class="views-container">
+      
+      <!-- VUE 1 : JOURNAL - PAGE DU JOUR UNIQUE (Chaque jour est seul) & RECHERCHE -->
+      <section id="viewTimeline" class="view-section active">
+        
+        <!-- Navigation jour par jour -->
+        <div class="day-nav-wrapper">
+          <button class="day-arrow-btn" id="prevDayBtn" title="Jour précédent">‹</button>
+          
+          <div class="day-current-display" id="dayPickerTrigger" title="Cliquer pour choisir un jour précis">
+            <div class="day-weekday" id="dayWeekdayLabel">Aujourd'hui</div>
+            <div class="day-full-date" id="dayDateLabel">22 Septembre 2026</div>
+            <input type="date" id="dayDirectDatePicker" class="hidden-date-picker">
+          </div>
+          
+          <button class="day-arrow-btn" id="nextDayBtn" title="Jour suivant">›</button>
+        </div>
+
+        <!-- Raccourcis de navigation de date -->
+        <div class="day-quick-actions">
+          <button type="button" class="quick-pill active" id="jumpTodayBtn">📍 Aujourd'hui</button>
+          <button type="button" class="quick-pill" id="chooseDatePillBtn">📅 Choisir une date</button>
+          <button type="button" class="quick-pill" id="toggleTimelineModeBtn">📜 Afficher tous les jours</button>
+        </div>
+
+        <!-- FICHE DU JOUR UNIQUE (Chaque jour est seul) -->
+        <div id="singleDayContainer" class="single-day-container">
+          <!-- Carte complète du jour générée dynamiquement -->
+        </div>
+
+        <!-- RÉSULTATS DE RECHERCHE / VUE GLOBALE -->
+        <div id="searchTimelineContainer" style="display: none;">
+          <div id="searchCountBadge" style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;"></div>
+          <div class="timeline" id="memoriesTimeline">
+            <!-- Cartes de recherche -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- VUE 2 : CALENDRIER -->
+      <section id="viewCalendar" class="view-section">
+        <div class="calendar-card">
+          <div class="calendar-header">
+            <button class="cal-nav-btn" id="prevMonthBtn">‹</button>
+            <h3 id="currentMonthYearLabel">Septembre 2026</h3>
+            <button class="cal-nav-btn" id="nextMonthBtn">›</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid">
+            <!-- Grille générée dynamiquement -->
+          </div>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <h4 id="selectedDayTitle" style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-muted);">Souvenirs du jour</h4>
+          <div class="timeline" id="calendarDayMemories">
+            <!-- Souvenirs du jour sélectionné -->
+          </div>
+        </div>
+      </section>
+
+      <!-- VUE 3 : STATISTIQUES & SOUVENIRS PASSÉS -->
+      <section id="viewStats" class="view-section">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="statStreak">0</div>
+            <div class="stat-label">🔥 Jours consécutifs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statTotalNotes">0</div>
+            <div class="stat-label">📖 Total souvenirs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statTotalWords">0</div>
+            <div class="stat-label">✍️ Mots écrits</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statTopMood">-</div>
+            <div class="stat-label">🌟 Humeur fréquente</div>
+          </div>
+        </div>
+
+        <!-- Ce jour-là dans le passé -->
+        <h4 class="stats-section-title">🕰️ Ce jour-là dans le passé</h4>
+        <div id="throwbackContainer">
+          <!-- Carte souvenir passé ou message invitant à continuer -->
+        </div>
+
+        <!-- Répartition des humeurs -->
+        <h4 class="stats-section-title">📊 Répartition des humeurs</h4>
+        <div id="moodStatsList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Barres d'humeurs générées dynamiquement -->
+        </div>
+      </section>
+
+      <!-- VUE 4 : PARAMÈTRES ET SAUVEGARDE -->
+      <section id="viewSettings" class="view-section">
+        
+        <div class="settings-group">
+          <div class="settings-item" id="settingThemeBtn">
+            <div class="settings-info">
+              <span class="settings-title">Apparence</span>
+              <span class="settings-desc" id="currentThemeDesc">Mode Sombre</span>
+            </div>
+            <span style="font-size: 1.2rem;">🎨</span>
+          </div>
+
+          <div class="settings-item" id="settingVoiceLangBtn">
+            <div class="settings-info">
+              <span class="settings-title">Langue de dictée vocale</span>
+              <span class="settings-desc" id="currentLangDesc">Français (France)</span>
+            </div>
+            <span style="font-size: 1.2rem;">🗣️</span>
+          </div>
+
+          <div class="settings-item" id="settingPinBtn">
+            <div class="settings-info">
+              <span class="settings-title">Sécurité par Code PIN</span>
+              <span class="settings-desc" id="currentPinDesc">Désactivé</span>
+            </div>
+            <span style="font-size: 1.2rem;">🔐</span>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-item" id="exportBackupBtn">
+            <div class="settings-info">
+              <span class="settings-title">Exporter mes souvenirs (Sauvegarde)</span>
+              <span class="settings-desc">Télécharger un fichier de sauvegarde JSON complet</span>
+            </div>
+            <span style="font-size: 1.2rem;">📥</span>
+          </div>
+
+          <div class="settings-item" id="importBackupBtn">
+            <div class="settings-info">
+              <span class="settings-title">Restaurer une sauvegarde</span>
+              <span class="settings-desc">Importer un fichier JSON de souvenirs</span>
+            </div>
+            <span style="font-size: 1.2rem;">📤</span>
+          </div>
+          <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-item" id="installPwaBtn">
+            <div class="settings-info">
+              <span class="settings-title">Installer sur mon téléphone Android</span>
+              <span class="settings-desc">Instructions pour ajouter à l'écran d'accueil</span>
+            </div>
+            <span style="font-size: 1.2rem;">📱</span>
+          </div>
+          
+          <div class="settings-item" id="clearAllDataBtn" style="color: var(--danger);">
+            <div class="settings-info">
+              <span class="settings-title" style="color: var(--danger);">Effacer toutes les données</span>
+              <span class="settings-desc">Supprime définitivement les souvenirs de cet appareil</span>
+            </div>
+            <span style="font-size: 1.2rem;">🗑️</span>
+          </div>
+        </div>
+
+        <p style="text-align: center; color: var(--text-sub); font-size: 0.8rem; margin-top: 10px;">
+          Journal Mémoire v1.0 • 100% Hors-ligne & Gratuit
+        </p>
+      </section>
+
+    </main>
+
+    <!-- Boutons d'action flottants (FAB) -->
+    <div class="fab-container" id="fabContainer">
+      <!-- Bouton Enregistrement Vocal Direct -->
+      <button class="fab-btn fab-voice" id="fabVoiceBtn" title="Nouveau souvenir à la voix">
+        🎙️
+      </button>
+      <!-- Bouton Saisie Clavier Direct -->
+      <button class="fab-btn fab-add" id="fabAddBtn" title="Nouveau souvenir au clavier">
+        ✍️
+      </button>
+    </div>
+
+    <!-- Barre de Navigation Inférieure (Bottom Navigation) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="viewTimeline">
+        <span class="nav-icon">📖</span>
+        <span>Journal</span>
+      </button>
+      <button class="nav-item" data-view="viewCalendar">
+        <span class="nav-icon">📅</span>
+        <span>Calendrier</span>
+      </button>
+      <button class="nav-item" data-view="viewStats">
+        <span class="nav-icon">📊</span>
+        <span>Stats</span>
+      </button>
+      <button class="nav-item" data-view="viewSettings">
+        <span class="nav-icon">⚙️</span>
+        <span>Réglages</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- MODAL : ÉDITEUR DE SOUVENIR (VOCAL & CLAVIER) -->
+  <div class="modal-overlay" id="editorModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="editorModalTitle">Nouveau Souvenir</h2>
+        <button class="icon-btn" id="closeEditorBtn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Date et Heure -->
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="date" id="entryDateInput" class="form-input" style="flex: 1;">
+          <input type="time" id="entryTimeInput" class="form-input" style="width: 100px;">
+        </div>
+
+        <!-- Localisation GPS & Google Maps (En haut, immédiatement visible) -->
+        <div class="location-picker-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+          <button type="button" class="btn btn-secondary" id="btnGetLocation" style="padding: 7px 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; border-radius: 20px;">
+            <span>📍</span>
+            <span id="locationBtnText">Ajouter ma position (GPS)</span>
+          </button>
+          <div id="locationBadge" style="display: none; align-items: center; gap: 6px; background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; color: var(--text-main);">
+            <span id="locationBadgeText">📍 ...</span>
+            <button type="button" id="removeLocationBtn" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; padding: 0 2px; line-height: 1;" title="Retirer le lieu">✕</button>
+          </div>
+          <span id="locationStatusMsg" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+        </div>
+
+        <!-- Sélecteur d'humeur -->
+        <div class="form-group">
+          <label class="form-label">Comment vous sentez-vous ?</label>
+          <div class="mood-selector" id="editorMoodSelector">
+            <button type="button" class="mood-option selected" data-mood="😊" title="Heureux">😊</button>
+            <button type="button" class="mood-option" data-mood="😌" title="Paisible">😌</button>
+            <button type="button" class="mood-option" data-mood="⚡" title="Énergique">⚡</button>
+            <button type="button" class="mood-option" data-mood="💖" title="Reconnaissant">💖</button>
+            <button type="button" class="mood-option" data-mood="🤔" title="Pensif">🤔</button>
+            <button type="button" class="mood-option" data-mood="😴" title="Fatigué">😴</button>
+            <button type="button" class="mood-option" data-mood="😢" title="Triste">😢</button>
+            <button type="button" class="mood-option" data-mood="🤯" title="Débordé">🤯</button>
+          </div>
+        </div>
+
+        <!-- Boîte d'Assistant Vocal (Dictée et Enregistrement) -->
+        <div class="voice-assistant-box">
+          <div class="voice-box-header">
+            <div class="voice-status-text" id="voiceStatusText">
+              <span>🎙️ Dictée vocale</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="voiceLangSelect" class="lang-select-pill" title="Langue de dictée">
+                <option value="ar-DZ">🇩🇿 الدارجة (ar-DZ)</option>
+                <option value="fr-FR" selected>🇫🇷 Français</option>
+                <option value="ar-SA">🇸🇦 العربية</option>
+                <option value="en-US">🇬🇧 English</option>
+              </select>
+              <button type="button" class="mic-toggle-btn" id="micToggleBtn">
+                <span id="micBtnIcon">🎙️</span>
+                <span id="micBtnLabel">Parler</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Onde sonore en direct -->
+          <div class="sound-wave-bars" id="soundWaveBars" style="display: none;">
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+            <div class="sound-bar"></div>
+          </div>
+
+          <!-- Affichage du texte en cours de dictée -->
+          <div class="live-interim-box" id="liveInterimBox" dir="auto"></div>
+
+          <!-- Option pour conserver le fichier audio -->
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">
+            <input type="checkbox" id="recordAudioCheckbox" checked>
+            Enregistrer aussi ma voix pour la réécouter plus tard
+          </label>
+        </div>
+
+        <!-- Lecteur de la note vocale enregistrée (si présente) -->
+        <div id="editorAudioPreviewBox" style="display: none;">
+          <label class="form-label">Note vocale enregistrée</label>
+          <div class="audio-preview-bar">
+            <button type="button" class="audio-play-btn" id="editorAudioPlayBtn">▶</button>
+            <div class="audio-track">
+              <div class="audio-progress">
+                <div class="audio-progress-bar" id="editorAudioProgressBar"></div>
+              </div>
+              <div class="audio-time-label">
+                <span id="editorAudioCurrentTime">0:00</span>
+                <span id="editorAudioTotalDuration">0:00</span>
+              </div>
+            </div>
+            <button type="button" class="icon-btn" id="deleteAudioBtn" title="Supprimer la note vocale" style="width: 28px; height: 28px; font-size: 0.8rem; color: var(--danger);">🗑️</button>
+          </div>
+        </div>
+
+        <!-- Titre du souvenir -->
+        <div class="form-group">
+          <label class="form-label" for="entryTitleInput">Titre (optionnel)</label>
+          <input type="text" id="entryTitleInput" class="form-input" dir="auto" placeholder="Ex: Belle promenade en famille... / يوم مميز...">
+        </div>
+
+        <!-- Contenu du souvenir -->
+        <div class="form-group">
+          <label class="form-label" for="entryContentInput">Votre récit / Pensées du jour</label>
+          <textarea id="entryContentInput" class="form-textarea" dir="auto" placeholder="Racontez vos souvenirs en français ou en الدارجة... Vous pouvez aussi dicter avec le micro !"></textarea>
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-sub); margin-top: 2px;">
+            <span id="wordCountLabel">0 mots</span>
+            <span>Sauvegarde automatique locale</span>
+          </div>
+        </div>
+
+        <!-- Photos du souvenir -->
+        <div class="form-group">
+          <label class="form-label">Photos souvenirs</label>
+          <div class="photo-upload-area" id="photoUploadArea">
+            <label class="add-photo-btn" for="photoInput">
+              <span style="font-size: 1.2rem;">📷</span>
+              <span>Ajouter</span>
+            </label>
+            <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
+            <div id="photosPreviewList" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+          </div>
+        </div>
+
+        <!-- Tags / Catégories -->
+        <div class="form-group">
+          <label class="form-label">Catégories</label>
+          <div id="tagsContainer" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <button type="button" class="mood-pill tag-choice" data-tag="Quotidien">Quotidien</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Famille">Famille</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Travail">Travail</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Voyage">Voyage</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Santé">Santé</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Idée">Idée</button>
+            <button type="button" class="mood-pill tag-choice" data-tag="Gratitude">Gratitude</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelEditorBtn">Annuler</button>
+        <button type="button" class="btn btn-primary" id="saveEntryBtn">💾 Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : DÉTAIL D'UN SOUVENIR -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="detailMoodBadge" style="font-size: 1.4rem;">😊</span>
+          <span id="detailDateText" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">22 Septembre 2026</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="icon-btn" id="detailJumpDayBtn" title="Ouvrir la page de ce jour">📅</button>
+          <button class="icon-btn" id="detailFavBtn" title="Favori">⭐</button>
+          <button class="icon-btn" id="detailEditBtn" title="Modifier">✏️</button>
+          <button class="icon-btn" id="detailDeleteBtn" title="Supprimer" style="color: var(--danger);">🗑️</button>
+          <button class="icon-btn" id="closeDetailBtn">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <h2 id="detailTitleText" dir="auto" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Titre du souvenir</h2>
+        
+        <!-- Lecteur Audio dans le détail -->
+        <div id="detailAudioBox" style="display: none;">
+          <div class="audio-preview-bar">
+            <button type="button" class="audio-play-btn" id="detailAudioPlayBtn">▶</button>
+            <div class="audio-track">
+              <div class="audio-progress">
+                <div class="audio-progress-bar" id="detailAudioProgressBar"></div>
+              </div>
+              <div class="audio-time-label">
+                <span id="detailAudioCurrentTime">0:00</span>
+                <span id="detailAudioTotalDuration">0:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Galerie Photos -->
+        <div id="detailPhotosGallery" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+        <!-- Texte du souvenir -->
+        <div id="detailContentText" dir="auto" style="font-size: 1rem; line-height: 1.6; color: var(--text-main); white-space: pre-line;"></div>
+
+        <!-- Localisation dans le détail -->
+        <div id="detailLocationBox" style="display: none; margin: 10px 0;">
+          <a id="detailLocationLink" href="#" target="_blank" rel="noopener noreferrer" class="location-link-pill">
+            <span>📍</span>
+            <span id="detailLocationText">Voir sur Google Maps</span>
+            <span style="font-size: 0.75rem;">↗</span>
+          </a>
+        </div>
+
+        <!-- Tags -->
+        <div id="detailTagsList" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="speech.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
